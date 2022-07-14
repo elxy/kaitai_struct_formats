@@ -29,27 +29,126 @@ types:
           switch-on: boxtype
           cases:
             boxtype::uuid: uuid
-            boxtype::ftyp: ftyp
-            boxtype::avc1: avc1
-            boxtype::dinf: box_container
-            boxtype::dref: dref
-            boxtype::edts: box_container
-            boxtype::mdia: box_container
-            boxtype::mdhd: mdhd
-            boxtype::minf: box_container
+            boxtype::ftyp: general_type_box
             boxtype::moov: box_container
             boxtype::mvhd: mvhd
-            boxtype::proj: box_container
+            boxtype::meta: fullbox
+            boxtype::trak: box_container
+            boxtype::tkhd: tkhd
+            boxtype::tref: box_container
+            boxtype::trgr: box_container
+            boxtype::edts: box_container
+            boxtype::elst: elst
+            boxtype::mdia: box_container
+            boxtype::mdhd: mdhd
+            boxtype::hdlr: hdlr
+            boxtype::elng: fullbox
+            boxtype::minf: box_container
+            boxtype::vmhd: vmhd
+            boxtype::smhd: fullbox
+            boxtype::hmhd: fullbox
+            boxtype::sthd: box_container
+            boxtype::nmhd: box_container
+            boxtype::dinf: box_container
+            boxtype::dref: dref
+            boxtype::url : url
+            boxtype::urn : urn
+            boxtype::imdt: imdt
+            boxtype::snim: fullbox
             boxtype::stbl: box_container
             boxtype::stsd: stsd
-            boxtype::sv3d: box_container
-            boxtype::tkhd: tkhd
-            boxtype::trak: box_container
-            boxtype::ytmp: ytmp
+            boxtype::stts: stts
+            boxtype::ctts: fullbox
+            boxtype::cslg: fullbox
+            boxtype::stsc: fullbox
+            boxtype::stsz: fullbox
+            boxtype::stz2: fullbox
+            boxtype::stco: fullbox
+            boxtype::co64: fullbox
+            boxtype::stss: fullbox
+            boxtype::stsh: fullbox
+            boxtype::padb: fullbox
+            boxtype::stdp: fullbox
+            boxtype::sdtp: fullbox
+            boxtype::sbgp: fullbox
+            boxtype::sgpd: fullbox
+            boxtype::subs: fullbox
+            boxtype::saiz: fullbox
+            boxtype::saio: fullbox
+            boxtype::udta: box_container
+            boxtype::cprt: fullbox
+            boxtype::tsel: fullbox
+            boxtype::kind: fullbox
+            boxtype::strk: box_container
+            boxtype::stri: fullbox
+            boxtype::strd: box_container
+            boxtype::ludt: fullbox
+            boxtype::mvex: box_container
+            boxtype::mehd: mehd
+            boxtype::trex: trex
+            boxtype::leva: fullbox
+            boxtype::trep: trep
+            boxtype::moof: box_container
+            boxtype::mfhd: fullbox
+            boxtype::traf: box_container
+            boxtype::tfhd: fullbox
+            boxtype::trun: fullbox
+            boxtype::tfdt: fullbox
+            boxtype::mfra: box_container
+            boxtype::tfra: fullbox
+            boxtype::mfro: fullbox
+            boxtype::mdat: dummy
+            boxtype::free: box_container
+            boxtype::skip: box_container
+            boxtype::imda: box_container
+            boxtype::iloc: fullbox
+            boxtype::ipro: fullbox
+            boxtype::sinf: box_container
+            boxtype::frma: box_container
+            boxtype::schm: fullbox
+            boxtype::schi: box_container
+            boxtype::iinf: fullbox
+            boxtype::xml:  fullbox
+            boxtype::bxml: fullbox
+            boxtype::pitm: fullbox
+            boxtype::fiin: fullbox
+            boxtype::paen: fullbox
+            boxtype::fire: fullbox
+            boxtype::fpar: fullbox
+            boxtype::fecr: fullbox
+            boxtype::segr: fullbox
+            boxtype::gitn: fullbox
+            boxtype::idat: box_container
+            boxtype::iref: fullbox
+            boxtype::styp: general_type_box
+            boxtype::sidx: fullbox
+            boxtype::ssix: fullbox
+            boxtype::prft: fullbox
+            boxtype::c_mov: box_container
+            boxtype::c_mof: box_container
+            boxtype::c_six: box_container
+            boxtype::c_ssx: box_container
     instances:
       len:
         value: 'size == 0 ? (_io.size - 8) : (size == 1 ? largesize - 16 : size - 8)'
     -webide-representation: '{type}'
+
+  fullbox:
+    seq:
+      - id: header
+        type: fullbox_header
+      - id: data
+        size: len
+    instances:
+      len:
+        value: '_parent.size == 0 ? (_io.size - 4) : (_parent.size == 1 ? _parent.largesize - 24 : _parent.size - 12)'
+
+  fullbox_header:
+    seq:
+      - id: version
+        type: u1
+      - id: flags
+        size: 3
 
   box_container:
     seq:
@@ -57,12 +156,7 @@ types:
         type: box
         repeat: eos
 
-  uuid:
-    seq:
-      - id: uuid
-        size: 16
-
-  ftyp:
+  general_type_box:
     seq:
       - id: major_brand
         type: u4
@@ -76,48 +170,61 @@ types:
 
   mvhd:
     seq:
-      - id: version
-        type: u1
-        doc: Version of this movie header atom
-      - id: flags
-        size: 3
-      - id: creation_time32
-        type: u4
-        if: version == 0
-      - id: creation_time64
-        type: u8
-        if: version == 1
-      - id: modification_time32
-        type: u4
-        if: version == 0
-      - id: modification_time64
-        type: u8
-        if: version == 1
+      - id: header
+        type: fullbox_header
+      - id: creation_time
+        doc: |
+          Declares the creation time of the presentation (in seconds since
+          midnight, Jan. 1, 1904, in UTC time)
+        type:
+          switch-on: header.version
+          cases:
+            1: u8
+            _: u4
+      - id: modification_time
+        doc: |
+          Declares the most recent time the presentation was modified (in
+          seconds since midnight, Jan. 1, 1904, in UTC time)
+        type:
+          switch-on: header.version
+          cases:
+            1: u8
+            _: u4
       - id: time_scale
         type: u4
         doc: |
-          A time value that indicates the time scale for this
-          movie - the number of time units that pass per second
-          in its time coordinate system. A time coordinate system that
-          measures time in sixtieths of a second, for example, has a
-          time scale of 60.
-      - id: duration32
-        type: u4
-        if: version == 0
-      - id: duration64
-        type: u8
-        if: version == 1
+          A time value that indicates the time scale for this presentation - the
+          number of time units that pass per second in its time coordinate
+          system. A time coordinate system that measures time in sixtieths of a
+          second, for example, has a time scale of 60.
+      - id: duration
+        doc: |
+          A time value that indicates the duration of the movie in time scale
+          units. Note that this property is derived from the movie's tracks. The
+          value of this field corresponds to the duration of the longest track
+          in the movie.
+        type:
+          switch-on: header.version
+          cases:
+            1: u8
+            _: u4
       - id: rate
         type: fixed32_16int
-        doc: The rate at which to play this movie. A value of 1.0 indicates normal rate.
+        doc: |
+          The rate at which to play this movie. A value of 1.0 indicates normal
+          rate.
       - id: volume
         type: fixed16_8int
-        doc: How loud to play this movie's sound. A value of 1.0 indicates full volume.
+        doc: |
+          How loud to play this movie's sound. A value of 1.0 indicates full
+          volume.
       - id: reserved
         size: 10
       - id: matrix
         type: matrix
-        doc: A matrix shows how to map points from one coordinate space into another.
+        doc: |
+          A matrix shows how to map points from one coordinate space into
+          another.
       - id: pre_defined
         type: u4
         repeat: expr
@@ -125,9 +232,8 @@ types:
       - id: next_track_id
         type: u4
         doc: |
-          Indicates a value to use for the track ID number of the next
-          track added to this movie. Note that 0 is not a valid track
-          ID value.
+          Indicates a value to use for the track ID number of the next track
+          added to this movie. Note that 0 is not a valid track ID value.
 
   tkhd:
     seq:
@@ -135,34 +241,50 @@ types:
         type: u1
       - id: flags
         type: tkhd_flags
-      - id: creation_time32
-        type: u4
-        if: version == 0
-      - id: creation_time64
-        type: u8
-        if: version == 1
-      - id: modification_time32
-        type: u4
-        if: version == 0
-      - id: modification_time64
-        type: u8
-        if: version == 1
+      - id: creation_time
+        type:
+          switch-on: version
+          cases:
+            1: u8
+            _: u4
+      - id: modification_time
+        type:
+          switch-on: version
+          cases:
+            1: u8
+            _: u4
       - id: track_id
         type: u4
-        doc: Integer that uniquely identifies the track. The value 0 cannot be used.
+        doc: |
+          Integer that uniquely identifies the track. The value 0 cannot be
+          used.
       - id: reserved1
         size: 4
-      - id: duration32
-        type: u4
-        if: version == 0
-      - id: duration64
-        type: u8
-        if: version == 1
+      - id: duration
+        type:
+          switch-on: version
+          cases:
+            1: u8
+            _: u4
       - id: reserved2
         size: 8
       - id: layer
+        doc: |
+          Specifies the front-to-back ordering of video tracks; tracks with
+          lower numbers are closer to the viewer. 0 is the normal value, and -1
+          would be in front of track 0, and so on.
         type: u2
       - id: alternative_group
+        doc: |
+          An integer that specifies a group or collection of tracks. If this
+          field is 0 there is no information on possible relations to other
+          tracks. If this field is not 0, it should be the same for tracks that
+          contain alternate data for one another and different for tracks
+          belonging to different such groups. Only one track within an alternate
+          group should be played or streamed at any one time, and shall be
+          distinguishable from other tracks in the group via attributes such as
+          bitrate, codec, language, packet size etc. A group may have only one
+          member.
         type: u2
       - id: volume
         type: fixed16_8int
@@ -171,86 +293,307 @@ types:
       - id: matrix
         type: matrix
       - id: width
+        doc: |
+          For text and subtitle tracks, width and height may, depending on the
+          coding format, describe the suggested size of the rendering area. For
+          non-visual tracks (e.g. audio), they should be set to zero. For all
+          other tracks, they specify the track's visual presentation size. These
+          need not be the same as the pixel dimensions of the images, which is
+          documented in the sample description(s); all images in the sequence
+          are scaled to this size, before any overall transformation of the
+          track represented by the matrix. The pixel dimensions of the images
+          are the default values.
         type: fixed32_16int
       - id: height
         type: fixed32_16int
 
-  mdhd:
+  tkhd_flags:
+    seq:
+      - id: reserved
+        type: b20
+      - id: track_size_is_aspect_ratio
+        doc: |
+          The value 1 indicates that the width and height fields are not
+          expressed in pixel units.
+        type: b1
+      - id: track_in_preview
+        doc: |
+          This flags currently has no assigned meaning, and the value should be
+          ignored by readers.
+        type: b1
+      - id: track_in_movie
+        doc: |
+          The value 1 indicates that the track, or one of its alternatives (if
+          any) forms a direct part of the presentation.
+        type: b1
+      - id: track_enabled
+        doc: |
+          A disabled track (this flags is zero) is treated as if it were not
+          present.
+        type: b1
+
+  elst:
     seq:
       - id: version
         type: u1
       - id: flags
         size: 3
-      - id: creation_time32
+      - id: entry_count
         type: u4
-        if: version == 0
-      - id: creation_time64
-        type: u8
-        if: version == 1
-      - id: modification_time32
-        type: u4
-        if: version == 0
-      - id: modification_time64
-        type: u8
-        if: version == 1
+      - id: entries
+        type: edit_entry
+        repeat: expr
+        repeat-expr: entry_count
+    instances:
+      repeat_edits:
+        doc: |
+          When the edit list is repeated, media at time 0 resulting from the
+          edit list follows immediately the media having the largest time
+          resulting from the edit list. In other words, the edit list is
+          repeated seamlessly.
+        value: flags[2] & 0x1
+
+  edit_entry:
+    seq:
+      - id: edit_duration
+        doc: Specifies the duration of this edit in mvhd.time_scale units.
+        type:
+          switch-on: _parent.version
+          cases:
+            1: u8
+            _: u4
+      - id: media_time
+        doc: |
+          Indicates the starting time (in mvhd.time_scale units) within the
+          media of this edit entry. If it is set to -1, it is an empty edit.
+          edit_duration is the empty duration in the presentation (not play this
+          media). The last edit in a track shall never be an empty edit.
+        type:
+          switch-on: _parent.version
+          cases:
+            1: s8
+            _: s4
+      - id: media_rate
+        doc: |
+          Specifies the relative rate at which to play the media corresponding
+          to thie edit entry. 0 means a "dwell": the media would static at
+          media_time for edit_duration.
+        type: fixed32_16int
+
+  mdhd:
+    seq:
+      - id: header
+        type: fullbox_header
+      - id: creation_time
+        doc: |
+          Declares the creation time of the media in this track (in seconds
+          since midnight, Jan. 1, 1904, in UTC time)
+        type:
+          switch-on: header.version
+          cases:
+            1: u8
+            _: u4
+      - id: modification_time
+        doc: |
+          Declares the most recent time the media in this track was modified (in
+          seconds since midnight, Jan. 1, 1904, in UTC time)
+        type:
+          switch-on: header.version
+          cases:
+            1: u8
+            _: u4
       - id: time_scale
+        doc: |
+          A time value that indicates the time scale for this media - the number
+          of time units that pass per second in its time coordinate system. A
+          time coordinate system that measures time in sixtieths of a second,
+          for example, has a time scale of 60.
         type: u4
-      - id: duration32
-        type: u4
-        if: version == 0
-      - id: duration64
-        type: u8
-        if: version == 1
+      - id: duration
+        doc: |
+          A time value that indicates the duration of this media in time scale
+          units.
+        type:
+          switch-on: header.version
+          cases:
+            1: u8
+            _: u4
       - id: language
-        type: language
         doc: ISO-639-2/T language code
+        type: language
       - id: pre_defined
         type: u2
 
-  dref:
+  hdlr:
     seq:
-      - id: unknown_x0
-        size: 8
-      - id: boxes
+      - id: header
+        type: fullbox_header
+      - id: pre_defined
+        type: u4
+      - id: handler_type
+        doc: Specific media type of this track.
+        type: str
+        size: 4
+        encoding: ASCII
+      - id: reserved
+        size: 12
+      - id: name
+        doc: |
+          A human-readable name for the track type (for debugging and inspection
+          purposes).
+        type: strz
+        encoding: UTF-8
+
+  vmhd:
+    seq:
+      - id: header
+        type: fullbox_header
+      - id: graphicsmode
+        doc: |
+          Specific a composition mode for this video track. 0 means copy over
+          the existing image.
+        type: u2
+      - id: opcolor
+        doc: |
+          A set of 3 colour values (red, green, blue) available for use by
+          graphics modes.
+        type: opcolor
+
+  opcolor:
+    seq:
+      - id: red
+        type: u1
+      - id: green
+        type: u1
+      - id: blue
+        type: u1
+
+  dref:
+    doc: |
+      Contains a table of data references (normally URLs) that declare the
+      location(s) of the media data used within the presentation.
+    seq:
+      - id: header
+        type: fullbox_header
+      - id: entry_count
+        type: u4
+      - id: entries
         type: box
-        repeat: eos
+        repeat: expr
+        repeat-expr: entry_count
+
+  url:
+    seq:
+      - id: header
+        type: fullbox_header
+      - id: location
+        type: strz
+        encoding: UTF-8
+        if: entry_flag == 0
+    instances:
+      entry_flag:
+        doc: |
+          1 means that the media data is in the same file as the box containing
+          this data reference. If this flag is set, the url box shall be used
+          and no string is present; the box terminates with the entry-flags
+          field.
+        value: 'header.flags[2] & 0x1'
+
+  urn:
+    seq:
+      - id: header
+        type: fullbox_header
+      - id: name
+        type: strz
+        encoding: UTF-8
+      - id: location
+        type: strz
+        encoding: UTF-8
+
+  imdt:
+    seq:
+      - id: header
+        type: fullbox_header
+      - id: imda_ref_identifier
+        doc: |
+          Identifies the imda box (imda.imda_identifier == imda_ref_identifier)
+          containing the media data (which is accessed through
+          sample.data_reference_index in stsd box).
+        type: u4
 
   stsd:
+    doc: |
+      Gives detailed information about the coding type used, and any
+      initialization information needed for that coding.
     seq:
-      - id: unknown_x0
-        type: u8
+      - id: header
+        type: fullbox_header
+      - id: entry_count
+        type: u4
+      - id: sample_entries
+        type: box
+        repeat: expr
+        repeat-expr: entry_count
+
+  stts:
+    seq:
+      - id: header
+        type: fullbox_header
+      - id: entry_count
+        type: u4
       - id: boxes
         type: box
-        repeat: eos
+        repeat: expr
+        repeat-expr: entry_count
 
-  avc1:
+  mehd:
     seq:
-      - id: unknown_x0
-        size: 78
-      - id: boxes
-        type: box
-        repeat: eos
-
-  ytmp:
-    seq:
-      - id: unknown_x0
-        type: u4
-      - id: crc
-        type: u4
-      - id: encoding
-        type: u4
-        enum: boxtype
-      - id: payload
+      - id: header
+        type: fullbox_header
+      - id: fragment_duration
+        doc: |
+          Declares length of the presentation of the whole movie including
+          fragments (in mvhd.time_scale units). The value of this field
+          corresponds to the duration of the longest track, including movie
+          fragments. If an MP4 file is created in real-time, such as used in
+          live streaming, it is not likely that the fragment_duration is known
+          in advance and this box may be omitted.
         type:
-          switch-on: encoding
+          switch-on: header.version
           cases:
-            boxtype::dfl8: ytmp_payload_zlib
+            1: u8
+            _: u4
 
-  ytmp_payload_zlib:
+  trex:
     seq:
-      - id: data
-        size-eos: true
-        #process: zlib
+      - id: header
+        type: fullbox_header
+      - id: track_id
+        type: u4
+      - id: default_sample_description_index
+        type: u4
+      - id: default_sample_duration
+        type: u4
+      - id: default_sample_size
+        type: u4
+      - id: default_sample_flags
+        type: u4
+
+  trep:
+    seq:
+      - id: header
+        type: fullbox_header
+      - id: track_id
+        type: u4
+      - id: boxes
+        type: box
+        repeat: eos
+
+  uuid:
+    doc: uuid is used for unregistered box
+    seq:
+      - id: uuid
+        size: 16
 
   matrix:
     seq:
@@ -272,19 +615,6 @@ types:
         type: fixed32_16int
       - id: w
         type: fixed32_2int
-
-  tkhd_flags:
-    seq:
-      - id: reserved
-        type: b20
-      - id: track_size_is_aspect_ratio
-        type: b1
-      - id: track_in_preview
-        type: b1
-      - id: track_in_movie
-        type: b1
-      - id: track_enabled
-        type: b1
 
   language:
     seq:
@@ -324,45 +654,114 @@ types:
       - id: frac_part
         type: u1
 
+  dummy: {}
+
+
 enums:
 
   boxtype:
-    0x61766331: avc1
-    0x61766343: avc_c
-    0x64666C38: dfl8
-    0x64696E66: dinf
+    0x216d6f66: c_mof
+    0x216d6f76: c_mov
+    0x21736978: c_six
+    0x21737378: c_ssx
+    0x62786d6c: bxml
+    0x636f3634: co64
+    0x63707274: cprt
+    0x63736c67: cslg
+    0x63747473: ctts
+    0x64696e66: dinf
     0x64726566: dref
     0x65647473: edts
-    0x656C7374: elst
+    0x656c6e67: elng
+    0x656c7374: elst
+    0x66656372: fecr
+    0x6669696e: fiin
+    0x66697265: fire
+    0x66706172: fpar
+    0x66726565: free
+    0x66726d61: frma
     0x66747970: ftyp
-    0x68646C72: hdlr
-    0x6D646174: mdat
-    0x6D646864: mdhd
-    0x6D646961: mdia
-    0x6D696E66: minf
-    0x6D6F6F66: moof
-    0x6D6F6F76: moov
-    0x6D766578: mvex
-    0x6D766864: mvhd
-    0x70726864: prhd
-    0x70726F6A: proj
+    0x6769746e: gitn
+    0x68646c72: hdlr
+    0x686d6864: hmhd
+    0x69646174: idat
+    0x69696e66: iinf
+    0x696c6f63: iloc
+    0x696d6461: imda
+    0x696d6474: imdt
+    0x6970726f: ipro
+    0x69726566: iref
+    0x6b696e64: kind
+    0x6c657661: leva
+    0x6c756474: ludt
+    0x6d646174: mdat
+    0x6d646864: mdhd
+    0x6d646961: mdia
+    0x6d656864: mehd
+    0x6d657461: meta
+    0x6d666864: mfhd
+    0x6d667261: mfra
+    0x6d66726f: mfro
+    0x6d696e66: minf
+    0x6d6f6f66: moof
+    0x6d6f6f76: moov
+    0x6d766578: mvex
+    0x6d766864: mvhd
+    0x6e6d6864: nmhd
+    0x6f747970: otyp
+    0x70616462: padb
+    0x7061656e: paen
+    0x7064696e: pdin
+    0x7069746d: pitm
+    0x70726674: prft
+    0x7361696f: saio
+    0x7361697a: saiz
+    0x73626770: sbgp
+    0x73636869: schi
+    0x7363686d: schm
+    0x73647470: sdtp
+    0x73656772: segr
+    0x73677064: sgpd
     0x73696478: sidx
-    0x73743364: st3d
-    0x7374626C: stbl
-    0x7374636F: stco
+    0x73696e66: sinf
+    0x736b6970: skip
+    0x736d6864: smhd
+    0x736e696d: snim
+    0x73736978: ssix
+    0x7374626c: stbl
+    0x7374636f: stco
+    0x73746470: stdp
+    0x73746864: sthd
+    0x73747264: strd
+    0x73747269: stri
+    0x7374726b: strk
     0x73747363: stsc
     0x73747364: stsd
+    0x73747368: stsh
     0x73747373: stss
-    0x7374737A: stsz
+    0x7374737a: stsz
     0x73747473: stts
-    0x73763364: sv3d
-    0x73766864: svhd
-    0x746B6864: tkhd
-    0x7472616B: trak
-    0x75726C20: url
+    0x73747970: styp
+    0x73747a32: stz2
+    0x73756273: subs
+    0x74666474: tfdt
+    0x74666864: tfhd
+    0x74667261: tfra
+    0x746b6864: tkhd
+    0x74726166: traf
+    0x7472616b: trak
+    0x74726566: tref
+    0x74726578: trex
+    0x74726570: trep
+    0x74726772: trgr
+    0x7472756e: trun
+    0x7473656c: tsel
+    0x75647461: udta
+    0x75726c20: url
+    0x75726e20: urn
     0x75756964: uuid
-    0x766D6864: vmhd
-    0x79746D70: ytmp
+    0x766d6864: vmhd
+    0x786d6c20: xml
 
   # https://mp4ra.org/#/brands
   #
