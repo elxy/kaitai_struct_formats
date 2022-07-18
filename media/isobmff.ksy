@@ -1,6 +1,11 @@
 meta:
   id: isobmff
   application: ISO base media file
+  file-extension:
+    - mp4
+    - mov
+    - aac
+    - fmp4
   endian: be
   xref:
     iso: '14496-12:2022'
@@ -31,37 +36,37 @@ types:
             boxtype::uuid: uuid
             boxtype::ftyp: general_type_box
             boxtype::moov: box_container
-            boxtype::mvhd: mvhd
+            boxtype::mvhd: movie_header_box
             boxtype::meta: fullbox
             boxtype::trak: box_container
-            boxtype::tkhd: tkhd
+            boxtype::tkhd: track_header_box
             boxtype::tref: box_container
             boxtype::trgr: box_container
             boxtype::edts: box_container
-            boxtype::elst: elst
+            boxtype::elst: edit_list_box
             boxtype::mdia: box_container
-            boxtype::mdhd: mdhd
-            boxtype::hdlr: hdlr
+            boxtype::mdhd: media_header_box
+            boxtype::hdlr: handler_reference_box
             boxtype::elng: fullbox
             boxtype::minf: box_container
-            boxtype::vmhd: vmhd
+            boxtype::vmhd: video_media_header_box
             boxtype::smhd: fullbox
             boxtype::hmhd: fullbox
             boxtype::sthd: box_container
             boxtype::nmhd: box_container
             boxtype::dinf: box_container
-            boxtype::dref: dref
-            boxtype::url : url
-            boxtype::urn : urn
-            boxtype::imdt: imdt
+            boxtype::dref: data_reference_box
+            boxtype::url : data_entry_url_box
+            boxtype::urn : data_entry_urn_box
+            boxtype::imdt: data_entry_imda_box
             boxtype::snim: fullbox
             boxtype::stbl: box_container
-            boxtype::stsd: stsd
-            boxtype::stts: stts
+            boxtype::stsd: sample_description_box
+            boxtype::stts: time_to_sample_box
             boxtype::ctts: fullbox
             boxtype::cslg: fullbox
-            boxtype::stsc: fullbox
-            boxtype::stsz: fullbox
+            boxtype::stsc: sample_to_chunk_box
+            boxtype::stsz: sample_size_box
             boxtype::stz2: fullbox
             boxtype::stco: fullbox
             boxtype::co64: fullbox
@@ -84,10 +89,10 @@ types:
             boxtype::strd: box_container
             boxtype::ludt: fullbox
             boxtype::mvex: box_container
-            boxtype::mehd: mehd
-            boxtype::trex: trex
+            boxtype::mehd: movie_extends_header_box
+            boxtype::trex: track_extends_box
             boxtype::leva: fullbox
-            boxtype::trep: trep
+            boxtype::trep: track_extension_properties_box
             boxtype::moof: box_container
             boxtype::mfhd: fullbox
             boxtype::traf: box_container
@@ -131,7 +136,7 @@ types:
     instances:
       len:
         value: 'size == 0 ? (_io.size - 8) : (size == 1 ? largesize - 16 : size - 8)'
-    -webide-representation: '{type}'
+    -webide-representation: '{boxtype}'
 
   fullbox:
     seq:
@@ -162,13 +167,16 @@ types:
         type: u4
         enum: brand
       - id: minor_version
-        size: 4
+        type: u4
       - id: compatible_brands
         type: u4
         enum: brand
         repeat: eos
 
-  mvhd:
+  movie_header_box:
+    doc: |
+      MovieHeaderBox defines overall information which is media-independent, and
+      relevant to the entire presentation considered as a whole.
     seq:
       - id: header
         type: fullbox_header
@@ -235,12 +243,15 @@ types:
           Indicates a value to use for the track ID number of the next track
           added to this movie. Note that 0 is not a valid track ID value.
 
-  tkhd:
+  track_header_box:
+    doc: |
+      TrackHeaderBox specifies the characteristics of a single track. Exactly
+      one TrackHeaderBox is contained in a track.
     seq:
       - id: version
         type: u1
       - id: flags
-        type: tkhd_flags
+        type: track_header_flags
       - id: creation_time
         type:
           switch-on: version
@@ -307,7 +318,7 @@ types:
       - id: height
         type: fixed32_16int
 
-  tkhd_flags:
+  track_header_flags:
     seq:
       - id: reserved
         type: b20
@@ -332,7 +343,11 @@ types:
           present.
         type: b1
 
-  elst:
+  edit_list_box:
+    doc: |
+      EditListBox contains an explicit timeline map. Each entry defines part of
+      the track timeline:: by mapping part of the composition timeline, or by
+      indicating ‘empty’ time (portions of the presentation timeline
     seq:
       - id: version
         type: u1
@@ -356,7 +371,7 @@ types:
   edit_entry:
     seq:
       - id: edit_duration
-        doc: Specifies the duration of this edit in mvhd.time_scale units.
+        doc: Specifies the duration of this edit in mdhd.time_scale units.
         type:
           switch-on: _parent.version
           cases:
@@ -364,7 +379,7 @@ types:
             _: u4
       - id: media_time
         doc: |
-          Indicates the starting time (in mvhd.time_scale units) within the
+          Indicates the starting time (in mdhd.time_scale units) within the
           media of this edit entry. If it is set to -1, it is an empty edit.
           edit_duration is the empty duration in the presentation (not play this
           media). The last edit in a track shall never be an empty edit.
@@ -380,7 +395,7 @@ types:
           media_time for edit_duration.
         type: fixed32_16int
 
-  mdhd:
+  media_header_box:
     seq:
       - id: header
         type: fullbox_header
@@ -424,7 +439,7 @@ types:
       - id: pre_defined
         type: u2
 
-  hdlr:
+  handler_reference_box:
     seq:
       - id: header
         type: fullbox_header
@@ -444,7 +459,7 @@ types:
         type: strz
         encoding: UTF-8
 
-  vmhd:
+  video_media_header_box:
     seq:
       - id: header
         type: fullbox_header
@@ -468,10 +483,10 @@ types:
       - id: blue
         type: u1
 
-  dref:
+  data_reference_box:
     doc: |
-      Contains a table of data references (normally URLs) that declare the
-      location(s) of the media data used within the presentation.
+      DataRefecenceBox contains a table of data references (normally URLs) that
+      declare the location(s) of the media data used within the presentation.
     seq:
       - id: header
         type: fullbox_header
@@ -482,7 +497,7 @@ types:
         repeat: expr
         repeat-expr: entry_count
 
-  url:
+  data_entry_url_box:
     seq:
       - id: header
         type: fullbox_header
@@ -499,7 +514,7 @@ types:
           field.
         value: 'header.flags[2] & 0x1'
 
-  urn:
+  data_entry_urn_box:
     seq:
       - id: header
         type: fullbox_header
@@ -510,7 +525,7 @@ types:
         type: strz
         encoding: UTF-8
 
-  imdt:
+  data_entry_imda_box:
     seq:
       - id: header
         type: fullbox_header
@@ -521,32 +536,99 @@ types:
           sample.data_reference_index in stsd box).
         type: u4
 
-  stsd:
+  sample_description_box:
     doc: |
-      Gives detailed information about the coding type used, and any
-      initialization information needed for that coding.
+      SampleDescriptionBox gives detailed information about the coding type
+      used, and any initialization information needed for that coding.
     seq:
       - id: header
         type: fullbox_header
       - id: entry_count
         type: u4
-      - id: sample_entries
+      - id: entries
         type: box
         repeat: expr
         repeat-expr: entry_count
 
-  stts:
+  time_to_sample_box:
+    doc: |
+      Contains a compact version of a table that allows indexing from decoding
+      timestamp to sample number. Each entry gives the number of consecutive
+      samples with the same sample duration. By adding the sample durations a
+      complete time-to-sample map may be built.
     seq:
       - id: header
         type: fullbox_header
       - id: entry_count
         type: u4
-      - id: boxes
-        type: box
+      - id: entries
+        type: stts_entry
         repeat: expr
         repeat-expr: entry_count
 
-  mehd:
+  stts_entry:
+    seq:
+      - id: sample_count
+        type: u4
+      - id: sample_delta
+        doc: |
+          The difference between the decoding timestamp of the next sample and
+          this one (in the mdhd.time_scale units)
+        type: u4
+
+  sample_to_chunk_box:
+    doc: |
+      SampleToChunkBox is used to find the chunk that contains a sample, its
+      position and the associated sample description.
+    seq:
+      - id: header
+        type: fullbox_header
+      - id: entry_count
+        type: u4
+      - id: entries
+        type: stsc_entry
+        repeat: expr
+        repeat-expr: entry_count
+
+  stsc_entry:
+    seq:
+      - id: first_chunk
+        doc: |
+          Gives the index of the first chunk in this run of chunks that share
+          the same samples_per_chunk and sample_description_index; the index of
+          the first chunk in a track has the value 1 (the first_chunk field in
+          the first record of this box has the value 1, identifying that the
+          first sample maps to the first chunk).
+        type: u4
+      - id: samples_per_chunk
+        doc: Gives the number of samples in each of these chunks.
+        type: u4
+      - id: sample_description_index
+        doc: |
+          Gives the index of the sample entry that describes the samples in this
+          chunk. The index ranges from 1 to the number of sample entries in the
+          SampleDescriptionBox
+        type: u4
+
+  sample_size_box:
+    doc: |
+      This box contains the sample count and a table giving the size in bytes of
+      each sample. This allows the media data itself to be unframed. The total
+      number of samples in the media is always indicated in the sample count.
+    seq:
+      - id: header
+        type: fullbox_header
+      - id: sample_size
+        type: u4
+      - id: sample_count
+        type: u4
+      - id: entries
+        if: sample_size == 0
+        type: u4
+        repeat: expr
+        repeat-expr: sample_count
+
+  movie_extends_header_box:
     seq:
       - id: header
         type: fullbox_header
@@ -564,7 +646,7 @@ types:
             1: u8
             _: u4
 
-  trex:
+  track_extends_box:
     seq:
       - id: header
         type: fullbox_header
@@ -579,7 +661,7 @@ types:
       - id: default_sample_flags
         type: u4
 
-  trep:
+  track_extension_properties_box:
     seq:
       - id: header
         type: fullbox_header
